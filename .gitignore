@@ -11,3 +11,4 @@ build/
 *.bin
 *.safetensors
 .claude/
+.venv-test/
