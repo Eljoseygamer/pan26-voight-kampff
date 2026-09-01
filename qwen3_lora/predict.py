@@ -1,63 +1,62 @@
-"""
-Qwen3 + LoRA detector for PAN 2026 Voight-Kampff AI Detection.
-
-Usage:
-    python predict.py <input.jsonl> <output_dir>
-
-Input:  JSONL file where each line has at least an "id" and "text" field.
-Output: <output_dir>/predictions.jsonl, one JSON object per line:
-        {"id": <id>, "score": <float in [0, 1]>}
-        score > 0.5 -> predicted AI-generated
-        score < 0.5 -> predicted human-written
-
-Approach: base Qwen3 model with a LoRA adapter fine-tuned for AI-text
-detection. Adapter weights are loaded from the local adapters/ directory
-(not committed as placeholders; populate it with the trained adapter before
-running inference).
-"""
-import json
-import os
 import sys
+import os
+import torch
+from tqdm import tqdm
+from transformers import AutoTokenizer, AutoModelForSequenceClassification, BitsAndBytesConfig
+from peft import PeftModel
 
-BASE_MODEL_NAME = "Qwen/Qwen3-8B"
-ADAPTER_DIR = os.path.join(os.path.dirname(__file__), "adapters")
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'shared'))
+from utils import load_input, write_predictions
+
+BASE_MODEL = 'Qwen/Qwen3-0.6B'
+ADAPTER_PATH = os.environ.get('ADAPTER_PATH', 'eljoseygamer/qwen3-lora-pan26-voightkampff')
+BATCH_SIZE = 16
+MAX_LEN = 512
 
 
-def load_model():
-    # TODO: load base Qwen3 model + tokenizer, then attach the LoRA adapter
-    # from ADAPTER_DIR (e.g. via peft.PeftModel.from_pretrained)
-    raise NotImplementedError("load_model() not yet implemented")
-
-
-def predict_scores(model, texts):
-    # TODO: run inference and return the AI-generated class probability per text
-    raise NotImplementedError("predict_scores() not yet implemented")
+def predict(texts, model, tokenizer, device):
+    scores = []
+    model.eval()
+    for i in tqdm(range(0, len(texts), BATCH_SIZE), desc='Predicting'):
+        batch = texts[i:i + BATCH_SIZE]
+        enc = tokenizer(batch, truncation=True, max_length=MAX_LEN,
+                        padding=True, return_tensors='pt').to(device)
+        with torch.no_grad():
+            logits = model(**enc).logits
+        probs = torch.softmax(logits, dim=-1)[:, 1].cpu().numpy()
+        scores.extend(probs.tolist())
+    return scores
 
 
 def main():
-    if len(sys.argv) != 3:
-        print("Usage: python predict.py <input.jsonl> <output_dir>", file=sys.stderr)
-        sys.exit(1)
-
-    input_path = sys.argv[1]
+    input_file = sys.argv[1]
     output_dir = sys.argv[2]
-    os.makedirs(output_dir, exist_ok=True)
-    output_path = os.path.join(output_dir, "predictions.jsonl")
+    device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    print(f'Device: {device}')
+    bnb = BitsAndBytesConfig(
+        load_in_4bit=True,
+        bnb_4bit_quant_type='nf4',
+        bnb_4bit_compute_dtype=torch.bfloat16,
+        bnb_4bit_use_double_quant=True
+    )
+    print(f'Loading Qwen3 base model: {BASE_MODEL}')
+    tokenizer = AutoTokenizer.from_pretrained(BASE_MODEL)
+    if tokenizer.pad_token is None:
+        tokenizer.pad_token = tokenizer.eos_token
+    model = AutoModelForSequenceClassification.from_pretrained(
+        BASE_MODEL, num_labels=2, quantization_config=bnb, device_map='auto'
+    )
+    model.config.pad_token_id = tokenizer.pad_token_id
+    print(f'Loading LoRA adapters from {ADAPTER_PATH}')
+    model = PeftModel.from_pretrained(model, ADAPTER_PATH, is_trainable=False)
+    model.eval()
+    print('Loading test data...')
+    items = load_input(input_file)
+    ids = [x[0] for x in items]
+    texts = [x[1] for x in items]
+    scores = predict(texts, model, tokenizer, device)
+    write_predictions(output_dir, ids, scores)
 
-    records = []
-    with open(input_path, "r", encoding="utf-8") as f:
-        for line in f:
-            line = line.strip()
-            if line:
-                records.append(json.loads(line))
 
-    model = load_model()
-    scores = predict_scores(model, [r["text"] for r in records])
-
-    with open(output_path, "w", encoding="utf-8") as f:
-        for record, score in zip(records, scores):
-            f.write(json.dumps({"id": record["id"], "score": float(score)}) + "\n")
-
-
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()
