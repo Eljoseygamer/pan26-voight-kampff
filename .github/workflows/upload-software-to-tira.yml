@@ -12,11 +12,11 @@ jobs:
     timeout-minutes: 45
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Set up QEMU
-        uses: docker/setup-qemu-action@v2
+        uses: docker/setup-qemu-action@v3
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
+        uses: docker/setup-buildx-action@v3
       - name: Set up Dependencies
         uses: actions/setup-python@v5
         with:
@@ -24,10 +24,9 @@ jobs:
       - name: Install required python packages
         run: |
           python -m pip install --upgrade pip
-          pip3 install tira
+          pip3 install --upgrade tira
       - name: Build, test, and upload image
         run: |
           tira-cli login --token ${{ secrets.TIRA_CLIENT_TOKEN }}
-          tira-cli verify-installation
+          tira-cli verify-installation --task generative-ai-authorship-verification-panclef-2026 --team pan26-voight-kampff
           tira-cli code-submission --path ${{ inputs.directory }} --task generative-ai-authorship-verification-panclef-2026 --dataset generative-ai-authorship-verification-panclef-2026/pan26-generative-ai-detection-smoke-test-20260330-training
-
