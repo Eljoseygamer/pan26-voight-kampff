@@ -23,7 +23,7 @@ def predict(texts, model, tokenizer, device):
                         padding=True, return_tensors='pt').to(device)
         with torch.no_grad():
             logits = model(**enc).logits
-        probs = torch.softmax(logits, dim=-1)[:, 1].cpu().numpy()
+        probs = torch.softmax(logits, dim=-1)[:, 1].float().cpu().numpy()
         scores.extend(probs.tolist())
     return scores
 
