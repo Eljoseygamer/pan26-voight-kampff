@@ -11,6 +11,8 @@ def main():
     input_file = sys.argv[1]
     output_dir = sys.argv[2]
     train_path = os.path.join(os.path.dirname(__file__), 'data', 'train.jsonl')
+    if not os.path.exists(train_path):
+        train_path = os.path.join(os.path.dirname(__file__), '..', 'data', 'train.jsonl')
     print('Loading training data...')
     X_train, y_train = load_train(train_path)
     print('Training TF-IDF + Logistic Regression...')
