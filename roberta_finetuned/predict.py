@@ -4,7 +4,7 @@ import torch
 from tqdm import tqdm
 from transformers import RobertaTokenizer, RobertaForSequenceClassification
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'shared'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'shared'))
 from utils import load_input, write_predictions
 
 MODEL_NAME = os.environ.get('MODEL_PATH', 'eljosey40/roberta-finetuned-pan26-voightkampff')

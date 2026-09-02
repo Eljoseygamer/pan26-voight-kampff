@@ -5,7 +5,7 @@ from tqdm import tqdm
 from transformers import AutoTokenizer, AutoModelForSequenceClassification, BitsAndBytesConfig
 from peft import PeftModel
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'shared'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'shared'))
 from utils import load_input, write_predictions
 
 BASE_MODEL = 'Qwen/Qwen3-0.6B'

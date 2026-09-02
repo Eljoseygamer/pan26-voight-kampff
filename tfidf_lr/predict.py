@@ -1,6 +1,6 @@
 import sys
 import os
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'shared'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'shared'))
 from utils import load_input, load_train, write_predictions
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.linear_model import LogisticRegression
@@ -10,7 +10,7 @@ from sklearn.pipeline import Pipeline
 def main():
     input_file = sys.argv[1]
     output_dir = sys.argv[2]
-    train_path = os.path.join(os.path.dirname(__file__), '..', 'data', 'train.jsonl')
+    train_path = os.path.join(os.path.dirname(__file__), 'data', 'train.jsonl')
     print('Loading training data...')
     X_train, y_train = load_train(train_path)
     print('Training TF-IDF + Logistic Regression...')
